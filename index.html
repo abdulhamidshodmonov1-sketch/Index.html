@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shakl Aniqlovchi</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+  :root{--bg:#0a0a0f;--panel:#12121a;--border:#1e1e2e;--accent:#00ff88;--text:#e2e8f0;--muted:#4a5568}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;min-height:100vh;display:flex;flex-direction:column}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,136,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+  header{position:relative;z-index:10;padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem}.logo span{color:var(--accent)}
+  .status-pill{display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:100px;border:1px solid var(--border);font-size:.7rem;color:var(--muted);transition:all .3s}
+  .status-pill.active{border-color:var(--accent);color:var(--accent);box-shadow:0 0 12px rgba(0,255,136,.15)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:all .3s}
+  .status-pill.active .dot{background:var(--accent);animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
+  main{position:relative;z-index:5;flex:1;display:flex;flex-direction:column;padding:16px;gap:12px}
+  .canvas-wrapper{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#000;width:100%;aspect-ratio:4/3;box-shadow:0 0 30px rgba(0,255,136,.05);transition:box-shadow .3s}
+  .canvas-wrapper.active{box-shadow:0 0 30px rgba(0,255,136,.15)}
+  #outputCanvas{width:100%;height:100%;object-fit:cover;display:block}
+  .overlay-idle{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#000}
+  .overlay-idle .icon{font-size:3.5rem;opacity:.2}
+  .overlay-idle p{color:var(--muted);font-size:.8rem;text-align:center;line-height:1.6}
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn{padding:13px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-family:'Space Mono',monospace;font-size:.78rem;cursor:pointer;transition:all .2s;letter-spacing:.04em}
+  .btn.primary{border-color:var(--accent);color:var(--accent);background:rgba(0,255,136,.05)}
+  .btn.danger{border-color:#ef4444;color:#ef4444;background:rgba(239,68,68,.05);display:none}
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .stat-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 6px;text-align:center}
+  .stat-num{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--accent);line-height:1}
+  .stat-lbl{font-size:.55rem;color:var(--muted);margin-top:3px;letter-spacing:.08em}
+  .log-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;flex:1}
+  .log-title{font-size:.65rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:10px}
+  .shape-list{display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto}
+  .shape-item{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:.72rem;animation:slideIn .25s ease}
+  @keyframes slideIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+  .shape-left{display:flex;align-items:center;gap:7px}
+  .badge{padding:2px 7px;border-radius:100px;font-size:.6rem;font-weight:700}
+  .b-tri{background:rgba(168,85,247,.2);color:#a855f7}.b-rect{background:rgba(0,255,136,.15);color:#00ff88}
+  .b-circ{background:rgba(255,107,53,.2);color:#ff6b35}.b-hex{background:rgba(236,72,153,.2);color:#ec4899}
+  .b-other{background:rgba(74,85,104,.3);color:#a0aec0}
+  .empty{color:var(--muted);font-size:.75rem;text-align:center;padding:16px 0}
+  .settings-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .setting-row{margin-bottom:10px}.setting-row:last-child{margin-bottom:0}
+  .setting-lbl{display:flex;justify-content:space-between;font-size:.68rem;color:var(--muted);margin-bottom:5px}
+  .setting-lbl span{color:var(--accent)}
+  input[type=range]{width:100%;-webkit-appearance:none;height:3px;border-radius:2px;background:var(--border);outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 8px rgba(0,255,136,.4)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">SHAKL<span>_RADAR</span></div>
+  <div class="status-pill" id="pill"><div class="dot"></div><span id="pillTxt">TAYYOR</span></div>
+</header>
+<main>
+  <div class="canvas-wrapper" id="wrap">
+    <canvas id="outputCanvas"></canvas>
+    <div class="overlay-idle" id="idle">
+      <div class="icon">📷</div>
+      <p>Kamerani yoqish uchun<br>"KAMERA YOQISH" tugmasini bosing</p>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn primary" id="startBtn" onclick="startCam()">▶ KAMERA YOQISH</button>
+    <button class="btn danger" id="stopBtn" onclick="stopCam()">■ TO'XTATISH</button>
+    <button class="btn" onclick="clearAll()" style="grid-column:2">⊗ TOZALASH</button>
+  </div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-num" id="sTotal">0</div><div class="stat-lbl">JAMI</div></div>
+    <div class="stat-box"><div class="stat-num" id="sFps">--</div><div class="stat-lbl">FPS</div></div>
+    <div class="stat-box"><div class="stat-num" id="sTypes">0</div><div class="stat-lbl">TUR</div></div>
+    <div class="stat-box"><div class="stat-num" id="sMax">0</div><div class="stat-lbl">MAKS</div></div>
+  </div>
+  <div class="log-card">
+    <div class="log-title">🔍 Aniqlangan shakllar</div>
+    <div class="shape-list" id="shapeList"><div class="empty">Hali shakl aniqlanmagan...</div></div>
+  </div>
+  <div class="settings-card">
+    <div class="log-title">⚙ Sozlamalar</div>
+    <div class="setting-row">
+      <div class="setting-lbl">Sezgirlik <span id="tV">30</span></div>
+      <input type="range" id="thresh" min="5" max="100" value="30" oninput="document.getElementById('tV').textContent=this.value">
+    </div>
+    <div class="setting-row">
+      <div class="setting-lbl">Min hajm <span id="aV">800</span>px²</div>
+      <input type="range" id="minArea" min="100" max="8000" value="800" step="100" oninput="document.getElementById('aV').textContent=this.value">
+    </div>
+  </div>
+</main>
+<video id="vid" autoplay playsinline muted style="display:none"></video>
+<script>
+const vid=document.getElementById('vid'),canvas=document.getElementById('outputCanvas'),ctx=canvas.getContext('2d');
+const offscreen=document.createElement('canvas'),octx=offscreen.getContext('2d');
+let running=false,stream=null,rafId=null,total=0,maxFrame=0;
+const typesSeen=new Set();let log=[],lastT=performance.now(),frames=0,fps=0;
+
+async function startCam(){
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}});
+    vid.srcObject=stream;await vid.play();
+    document.getElementById('idle').style.display='none';
+    document.getElementById('startBtn').style.display='none';
+    document.getElementById('stopBtn').style.display='block';
+    document.getElementById('pill').classList.add('active');
+    document.getElementById('pillTxt').textContent='JONLI';
+    document.getElementById('wrap').classList.add('active');
+    running=true;loop();
+  }catch(e){alert('Kameraga ruxsat berilmadi: '+e.message);}
+}
+
+function stopCam(){
+  running=false;cancelAnimationFrame(rafId);
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  document.getElementById('idle').style.display='flex';
+  document.getElementById('startBtn').style.display='block';
+  document.getElementById('stopBtn').style.display='none';
+  document.getElementById('pill').classList.remove('active');
+  document.getElementById('pillTxt').textContent='TAYYOR';
+  document.getElementById('wrap').classList.remove('active');
+  document.getElementById('sFps').textContent='--';
+}
+
+function loop(){
+  if(!running)return;rafId=requestAnimationFrame(loop);
+  if(vid.readyState<2)return;
+  canvas.width=vid.videoWidth||640;canvas.height=vid.videoHeight||480;
+  offscreen.width=canvas.width;offscreen.height=canvas.height;
+  frames++;const now=performance.now();
+  if(now-lastT>=1000){fps=Math.round(frames*1000/(now-lastT));frames=0;lastT=now;document.getElementById('sFps').textContent=fps;}
+  ctx.drawImage(vid,0,0);octx.drawImage(vid,0,0,offscreen.width,offscreen.height);
+  try{detect();}catch(e){}
+}
+
+function detect(){
+  const W=offscreen.width,H=offscreen.height;
+  const imgData=octx.getImageData(0,0,W,H);const d=imgData.data;
+  const thresh=parseInt(document.getElementById('thresh').value);
+  const minArea=parseInt(document.getElementById('minArea').value);
+  const gray=new Uint8Array(W*H);
+  for(let i=0;i<W*H;i++)gray[i]=(d[i*4]*77+d[i*4+1]*150+d[i*4+2]*29)>>8;
+  const edge=new Uint8Array(W*H);
+  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
+    const gx=-gray[(y-1)*W+(x-1)]+gray[(y-1)*W+(x+1)]-2*gray[y*W+(x-1)]+2*gray[y*W+(x+1)]-gray[(y+1)*W+(x-1)]+gray[(y+1)*W+(x+1)];
+    const gy=-gray[(y-1)*W+(x-1)]-2*gray[(y-1)*W+x]-gray[(y-1)*W+(x+1)]+gray[(y+1)*W+(x-1)]+2*gray[(y+1)*W+x]+gray[(y+1)*W+(x+1)];
+    edge[y*W+x]=Math.sqrt(gx*gx+gy*gy)>thresh*3?255:0;
+  }
+  const visited=new Uint8Array(W*H);const shapes=[];
+  for(let y=2;y<H-2;y++)for(let x=2;x<W-2;x++){
+    const idx=y*W+x;if(edge[idx]!==255||visited[idx])continue;
+    const queue=[idx];visited[idx]=1;
+    let minX=x,maxX=x,minY=y,maxY=y,pixels=[];
+    while(queue.length){
+      const cur=queue.pop();const cx=cur%W,cy=(cur/W)|0;
+      pixels.push([cx,cy]);
+      if(cx<minX)minX=cx;if(cx>maxX)maxX=cx;if(cy<minY)minY=cy;if(cy>maxY)maxY=cy;
+      for(const n of[cur-1,cur+1,cur-W,cur+W])
+        if(n>=0&&n<W*H&&!visited[n]&&edge[n]===255){visited[n]=1;queue.push(n);}
+    }
+    const w=maxX-minX,h=maxY-minY,area=w*h;
+    if(area<minArea||w<20||h<20)continue;
+    shapes.push({minX,maxX,minY,maxY,w,h,area,pixels});
+  }
+  ctx.drawImage(vid,0,0,canvas.width,canvas.height);
+  const detected=[];
+  shapes.forEach(s=>{const info=classify(s);drawShape(s,info);detected.push(info);});
+  if(detected.length>0){
+    detected.forEach(i=>{typesSeen.add(i.name);total++;});
+    maxFrame=Math.max(maxFrame,detected.length);
+    document.getElementById('sTotal').textContent=total;
+    document.getElementById('sTypes').textContent=typesSeen.size;
+    document.getElementById('sMax').textContent=maxFrame;
+    const now=new Date().toLocaleTimeString('uz-UZ');
+    log=[...detected.map(i=>({...i,time:now})),...log].slice(0,30);
+    renderLog();
+  }
+}
+
+function classify(s){
+  const ar=s.w/s.h,pixels=s.pixels.length,fill=pixels/(s.w*s.h);
+  const circ=4*Math.PI*pixels/((s.w+s.h)*(s.w+s.h));
+  if(circ>0.6&&ar>0.7&&ar<1.4)return{name:'Doira',icon:'○',cls:'b-circ',color:'#ff6b35'};
+  if(ar>0.8&&ar<1.25&&fill>0.25)return{name:'Kvadrat',icon:'□',cls:'b-rect',color:'#00ff88'};
+  if((ar>1.4||ar<0.65)&&fill>0.2)return{name:"To'rtburchak",icon:'▭',cls:'b-rect',color:'#00ff88'};
+  if(fill<0.22)return{name:'Uchburchak',icon:'△',cls:'b-tri',color:'#a855f7'};
+  if(pixels>400&&fill>0.35)return{name:"Ko'pburchak",icon:'⬡',cls:'b-hex',color:'#ec4899'};
+  return{name:'Shakl',icon:'◈',cls:'b-other',color:'#a0aec0'};
+}
+
+function drawShape(s,info){
+  const scaleX=canvas.width/offscreen.width,scaleY=canvas.height/offscreen.height;
+  const x=s.minX*scaleX,y=s.minY*scaleY,w=s.w*scaleX,h=s.h*scaleY,cx=x+w/2,cy=y+h/2;
+  ctx.save();ctx.strokeStyle=info.color;ctx.lineWidth=2.5;ctx.shadowColor=info.color;ctx.shadowBlur=10;
+  if(info.name==='Doira'){ctx.beginPath();ctx.ellipse(cx,cy,w/2,h/2,0,0,Math.PI*2);ctx.stroke();}
+  else ctx.strokeRect(x,y,w,h);
+  ctx.shadowBlur=0;
+  [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([px,py])=>{ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fillStyle=info.color;ctx.fill();});
+  const label=`${info.icon} ${info.name}`;ctx.font='bold 13px monospace';
+  const tw=ctx.measureText(label).width,lx=Math.max(4,Math.min(cx-tw/2-8,canvas.width-tw-20)),ly=Math.max(22,y-6);
+  ctx.fillStyle='rgba(10,10,15,0.8)';ctx.beginPath();ctx.roundRect(lx,ly-18,tw+16,22,4);ctx.fill();
+  ctx.fillStyle=info.color;ctx.fillText(label,lx+8,ly-2);ctx.restore();
+}
+
+function renderLog(){
+  const el=document.getElementById('shapeList');
+  if(!log.length){el.innerHTML='<div class="empty">Hali shakl aniqlanmagan...</div>';return;}
+  el.innerHTML=log.map(s=>`<div class="shape-item"><div class="shape-left"><span>${s.icon}</span><span>${s.name}</span></div><span class="badge ${s.cls}">${s.time}</span></div>`).join('');
+}
+
+function clearAll(){
+  log=[];total=0;maxFrame=0;typesSeen.clear();
+  document.getElementById('sTotal').textContent='0';
+  document.getElementById('sTypes').textContent='0';
+  document.getElementById('sMax').textContent='0';
+  renderLog();
+}
+</script>
+</body>
+  </html>
